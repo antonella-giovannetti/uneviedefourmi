@@ -44,5 +44,5 @@ def draw_graph(G):
 
     plt.show()
 
-G, F = build_graph('data/fourmiliere_un.txt')
+G, F = build_graph('data/fourmiliere_zero.txt')
 draw_graph(G)
