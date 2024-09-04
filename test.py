@@ -6,7 +6,7 @@ class Fourmiliere:
     def __init__(self):
         self.graph = nx.Graph()
         self.salles = []
-        self.salle_indices = {}  # Dictionnaire pour les indices des salles
+        self.salle_indices = {}
         self.matrice_adjacence = None
     
     def ajouter_salle(self, salle):
@@ -57,56 +57,62 @@ class Simulation:
         self.etapes = []
     
     def trouver_chemin(self, start, end):
-        # Trouver le chemin le plus court en utilisant l'algorithme de Dijkstra
         return nx.shortest_path(self.fourmiliere.graph, source=start, target=end)
     
-    def charger_fourmis(self):
-        # Trouver les chemins pour toutes les fourmis depuis Sv jusqu'à Sd
-        chemins = self.trouver_chemin("Sv", "Sd")
-        return chemins
+    def charger_fourmis(self, nombre_fourmis):
+        chemin = self.trouver_chemin("Sv", "Sd")
+        for i in range(nombre_fourmis):
+            self.fourmis[f"F{i+1}"] = Fourmi(f"F{i+1}", chemin[:])
     
-    def simuler_deplacements(self):
-        chemins = self.charger_fourmis()
-        for i, salle in enumerate(chemins):
-            self.fourmis[f"F{i+1}"] = Fourmi(f"F{i+1}", chemins[:])
+    def simuler_deplacements(self, nombre_fourmis):
+        self.charger_fourmis(nombre_fourmis)
         
-        # Déplacer les fourmis en respectant les contraintes
         while any(fourmi.chemin for fourmi in self.fourmis.values()):
             etape = {}
             salle_occupees = set()
             for id_fourmi, fourmi in self.fourmis.items():
-                if fourmi.position and fourmi.chemin:
+                if fourmi.chemin and fourmi.position != "Sd":
                     next_position = fourmi.chemin[0]
                     if next_position not in salle_occupees:
-                        fourmi.deplacer()
                         salle_occupees.add(next_position)
-                        etape[id_fourmi] = (fourmi.position, fourmi.chemin[0] if fourmi.chemin else None)
-            if not etape:
-                break
+                        etape[id_fourmi] = (fourmi.position, next_position)
+                        fourmi.deplacer()
+                        if fourmi.position == "Sd":
+                            fourmi.chemin = []  # Vide le chemin pour arrêter la fourmi à Sd
             self.etapes.append(etape)
     
     def afficher_deplacements(self):
         for index, etape in enumerate(self.etapes):
-            print(f"Étape {index + 1}:")
+            print(f"+++E{index + 1}+++")
             for id_fourmi, (position, destination) in etape.items():
-                print(f"  Fourmi {id_fourmi}: {position} -> {destination}")
+                if destination:  # Affiche seulement les déplacements valides
+                    print(f"{id_fourmi} - {position} - {destination}")
 
 def visualiser_deplacements(simulation):
     fig, ax = plt.subplots()
-    
+
     pos = nx.spring_layout(simulation.fourmiliere.graph)  # Obtenir la disposition des nœuds
     nx.draw(simulation.fourmiliere.graph, pos, with_labels=True, node_size=700, node_color="lightgreen", ax=ax)
     
-    simulation.simuler_deplacements()
+    simulation.simuler_deplacements(nombre_fourmis)
     
     # Visualiser les déplacements
     for index, etape in enumerate(simulation.etapes):
         ax.clear()
         nx.draw(simulation.fourmiliere.graph, pos, with_labels=True, node_size=700, node_color="lightgreen", ax=ax)
+        
+        # Ajouter des annotations pour représenter les fourmis par F(n)
         for id_fourmi, (start, end) in etape.items():
             if start and end:
-                ax.annotate("", xy=pos[end], xytext=pos[start],
-                            arrowprops=dict(facecolor='red', shrink=0.05))
+                # Calculer une position intermédiaire entre start et end pour placer l'annotation
+                pos_start = pos[start]
+                pos_end = pos[end]
+                pos_mid = [(pos_start[0] + pos_end[0]) / 2, (pos_start[1] + pos_end[1]) / 2]
+                
+                # Placer l'annotation à mi-chemin
+                ax.text(pos_mid[0], pos_mid[1], id_fourmi, fontsize=12, ha='center', va='center',
+                        bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'))
+        
         plt.title(f"Étape {index + 1}")
         plt.pause(1)  # Pause pour montrer les étapes une par une
 
@@ -114,21 +120,24 @@ def visualiser_deplacements(simulation):
 
 def charger_fourmiliere(fichier_fourmiliere):
     fourmiliere = Fourmiliere()
+    nombre_fourmis = 0
     with open(fichier_fourmiliere, 'r') as file:
         lignes = file.readlines()
         for ligne in lignes:
             ligne = ligne.strip()
-            if ' - ' in ligne:
+            if ligne.startswith("f="):
+                nombre_fourmis = int(ligne.split('=')[1])
+            elif ' - ' in ligne:
                 salle1, salle2 = ligne.split(' - ')
                 fourmiliere.ajouter_tunnel(salle1, salle2)
             else:
                 fourmiliere.ajouter_salle(ligne)
-    return fourmiliere
+    return fourmiliere, nombre_fourmis
 
 # Exemple d'utilisation
 
 # Charger la fourmilière à partir du fichier
-fourmiliere = charger_fourmiliere("data/fourmiliere_trois.txt")
+fourmiliere, nombre_fourmis = charger_fourmiliere("data/fourmiliere_un.txt")
 
 # Afficher la fourmilière
 fourmiliere.afficher_fourmiliere()
@@ -141,7 +150,7 @@ fourmiliere.afficher_matrice_adjacence()
 simulation = Simulation(fourmiliere)
 
 # Simuler les déplacements et afficher
-simulation.simuler_deplacements()
+simulation.simuler_deplacements(nombre_fourmis)
 simulation.afficher_deplacements()
 
 # Visualiser les déplacements
