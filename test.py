@@ -137,7 +137,7 @@ def charger_fourmiliere(fichier_fourmiliere):
 # Exemple d'utilisation
 
 # Charger la fourmilière à partir du fichier
-fourmiliere, nombre_fourmis = charger_fourmiliere("data/fourmiliere_un.txt")
+fourmiliere, nombre_fourmis = charger_fourmiliere("data/fourmiliere_trois.txt")
 
 # Afficher la fourmilière
 fourmiliere.afficher_fourmiliere()
